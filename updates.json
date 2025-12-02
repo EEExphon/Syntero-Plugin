@@ -1,0 +1,14 @@
+{
+	"addons": {
+		"syntero@zotero.org": {
+			"updates": [
+				{
+					"version": "1.0.0",
+					"update_link": "https://github.com/shijiongyu/syntero/releases/download/v1.0.0/syntero-1.0.0.xpi",
+					"update_info_url": "https://github.com/shijiongyu/syntero/releases/download/v1.0.0/update-info.json"
+				}
+			]
+		}
+	}
+}
+
