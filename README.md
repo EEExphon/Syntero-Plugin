@@ -83,7 +83,7 @@ AGPL-3.0
 
 ## Author
 
-YU Shi Jiong (22107027D)
+YU Shi Jiong
 
 ## Support
 
