@@ -87,5 +87,4 @@ YU Shi Jiong (22107027D)
 
 ## Support
 
-For issues and questions, please visit: https://github.com/shijiongyu/syntero
-
+For issues and questions, please visit: https://github.com/EEExphon/Syntero-Plugin
