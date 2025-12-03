@@ -23,13 +23,13 @@ A Zotero plugin that synchronizes your Zotero settings and preferences across mu
 
 ### Quick Sync Dialog
 
-Click the **Syntero** button in the Zotero toolbar (or go to **Zotero → Tools → Syntero Settings...**) to open the sync dialog:
+Click the **Syntero** button in the Zotero toolbar to open the sync dialog:
 
-- **Sync** (Left): Downloads and applies settings from the cloud (overwrites current settings)
+- **Sync** : Downloads and applies settings from the cloud (overwrites current settings)
   - After sync, shows a detailed list of all changed settings with old and new values
-- **上传 (Upload)** (Middle): Uploads your current settings to the cloud
+- **Upload** : Uploads your current settings to the cloud
   - After upload, shows a list of all uploaded settings
-- **Cancel** (Right): Closes the dialog without any action
+- **Cancel** : Closes the dialog without any action
 
 ### Settings Preview
 
@@ -101,7 +101,6 @@ syntero-plugin/
 - Enhanced error handling: English error message when no configuration file found
 
 **UI Improvements:**
-- Reversed button order in sync dialog: Sync (left), Upload (middle), Cancel (right)
 - Settings preview after upload: Shows all uploaded settings
 - Change comparison after sync: Shows detailed list of changed settings with old/new values
 - Improved button styling with better visual feedback
@@ -111,7 +110,6 @@ syntero-plugin/
 - Removed automatic upload triggers (upload is always manual)
 
 **Technical Changes:**
-- Changed from XUL dialog windows to alert-style prompts for better compatibility
 - Improved change tracking in deserialize function
 - Enhanced upload function to return settings data for preview
 
