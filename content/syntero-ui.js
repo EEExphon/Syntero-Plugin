@@ -6,6 +6,8 @@ if (typeof Zotero.Syntero === 'undefined') {
 Zotero.Syntero.UI = {
 	initialized: false,
 	windowObserver: null,
+	mainWindowObserver: null,
+	windowCheckInterval: null,
 	
 	init: function() {
 		if (this.initialized) {
@@ -13,6 +15,7 @@ Zotero.Syntero.UI = {
 		}
 		
 		try {
+			this.setupWindowObserver();
 			this.setupPreferencesPane();
 			this.setupMenuItems();
 			this.setupToolbarButton();
@@ -24,11 +27,105 @@ Zotero.Syntero.UI = {
 		}
 	},
 	
+	setupWindowObserver: function() {
+		try {
+			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+			
+			// 监听所有窗口打开事件
+			const self = this;
+			this.mainWindowObserver = {
+				observe: function(subject, topic, data) {
+					if (topic === 'domwindowopened') {
+						try {
+							let window = null;
+							if (subject && typeof subject.QueryInterface === 'function') {
+								window = subject.QueryInterface(Components.interfaces.nsIDOMWindow);
+							} else if (subject && subject.document) {
+								window = subject;
+							} else if (subject && subject.wrappedJSObject) {
+								window = subject.wrappedJSObject;
+							}
+							
+							if (!window || !window.document) {
+								return;
+							}
+							
+							const href = window.location.href || '';
+							
+							// 延迟检查，确保窗口完全加载
+							setTimeout(function() {
+								try {
+									if (window.document) {
+										// 检查是否是Zotero主窗口 - 简化检测逻辑
+										const hasZoteroElements = window.document.getElementById('zotero-pane') ||
+										                        window.document.getElementById('zotero-items-tree') ||
+										                        window.document.getElementById('zotero-toolbar');
+										
+										if (hasZoteroElements) {
+											Zotero.debug('Syntero.UI: 检测到主窗口打开，重新添加按钮');
+											self.addToolbarButton();
+											self.addMenuItems();
+										}
+										
+										// 检查是否是偏好窗口
+										if (href.includes('preferences')) {
+											self.injectIntoSyncPane(window);
+										}
+									}
+								} catch (e) {
+									Zotero.debug('Syntero.UI: 处理窗口打开错误: ' + e.message);
+								}
+							}, 2000);
+						} catch (e) {
+							Zotero.debug('Syntero.UI: 窗口观察者错误: ' + e.message);
+						}
+					}
+				}
+			};
+			
+			Services.obs.addObserver(this.mainWindowObserver, 'domwindowopened');
+			
+			// 立即尝试添加按钮（如果主窗口已存在）
+			setTimeout(() => {
+				this.addToolbarButton();
+				this.addMenuItems();
+			}, 2000);
+			
+			// 定期检查主窗口，确保按钮存在
+			this.windowCheckInterval = setInterval(() => {
+				try {
+					const mainWindow = Zotero.getMainWindow();
+					if (mainWindow && mainWindow.document) {
+						const button = mainWindow.document.getElementById('syntero-toolbar-button');
+						const menuItem = mainWindow.document.getElementById('syntero-menu-settings');
+						
+						if (!button) {
+							Zotero.debug('Syntero.UI: 定期检查发现工具栏按钮缺失，重新添加');
+							this.addToolbarButton();
+						}
+						if (!menuItem) {
+							Zotero.debug('Syntero.UI: 定期检查发现菜单项缺失，重新添加');
+							this.addMenuItems();
+						}
+					}
+				} catch (e) {
+					// 忽略错误
+				}
+			}, 3000); // 每3秒检查一次
+			
+			Zotero.debug('Syntero.UI: 已注册主窗口观察者和定期检查');
+		} catch (e) {
+			Zotero.debug(`Syntero.UI: 设置窗口观察者错误: ${e.message}`);
+		}
+	},
+	
 	setupToolbarButton: function() {
+		// 按钮添加现在由setupWindowObserver和定期检查处理
+		// 这里保留一个初始尝试
 		try {
 			setTimeout(() => {
 				this.addToolbarButton();
-			}, 3000);
+			}, 1000);
 		} catch (e) {
 			Zotero.debug(`Syntero.UI: 设置工具栏按钮错误: ${e.message}`);
 		}
@@ -126,13 +223,13 @@ Zotero.Syntero.UI = {
 				this.setAttribute('style', this.style.cssText);
 			});
 			
-			button.addEventListener('command', (e) => {
+			button.addEventListener('command', function(e) {
 				e.preventDefault();
 				e.stopPropagation();
 				Zotero.Syntero.UI.openSynteroSettings();
 			}, false);
 			
-			button.addEventListener('click', (e) => {
+			button.addEventListener('click', function(e) {
 				e.preventDefault();
 				e.stopPropagation();
 				Zotero.Syntero.UI.openSynteroSettings();
@@ -147,9 +244,9 @@ Zotero.Syntero.UI = {
 			Zotero.debug(`Syntero.UI: 堆栈: ${e.stack}`);
 			try {
 				const mainWindow = Zotero.getMainWindow();
-			if (mainWindow) {
-				this.addStatusBarButton(mainWindow);
-			}
+				if (mainWindow) {
+					this.addStatusBarButton(mainWindow);
+				}
 			} catch (e2) {
 				Zotero.debug(`Syntero.UI: 添加状态栏按钮错误: ${e2.message}`);
 			}
@@ -187,8 +284,9 @@ Zotero.Syntero.UI = {
 				'font-weight: 500; ' +
 				'margin: 2px;'
 			);
-			label.addEventListener('click', () => {
-				this.openSynteroSettings();
+			const self2 = this;
+			label.addEventListener('click', function() {
+				self2.openSynteroSettings();
 			}, false);
 			
 			label.addEventListener('mouseenter', function() {
@@ -283,8 +381,9 @@ Zotero.Syntero.UI = {
 			const menuItem = mainWindow.document.createElement('menuitem');
 			menuItem.id = 'syntero-menu-settings';
 			menuItem.setAttribute('label', 'Syntero Settings...');
-			menuItem.addEventListener('command', () => {
-				this.openSynteroSettings();
+			const self3 = this;
+			menuItem.addEventListener('command', function() {
+				self3.openSynteroSettings();
 			}, false);
 			menuPopup.appendChild(menuItem);
 			
@@ -475,40 +574,11 @@ Zotero.Syntero.UI = {
 	
 	setupPreferencesPane: function() {
 		try {
-			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-			
-			this.windowObserver = {
-				observe: (subject, topic, data) => {
-					if (topic === 'domwindowopened') {
-						try {
-							let window = null;
-							if (subject && typeof subject.QueryInterface === 'function') {
-								window = subject.QueryInterface(Components.interfaces.nsIDOMWindow);
-							} else if (subject && subject.document) {
-								window = subject;
-							} else if (subject && subject.wrappedJSObject) {
-								window = subject.wrappedJSObject;
-							}
-							
-							if (window && window.location && window.location.href && window.location.href.includes('preferences')) {
-								setTimeout(() => {
-									this.injectIntoSyncPane(window);
-								}, 500);
-							}
-						} catch (e) {
-							Zotero.debug(`Syntero.UI: 窗口观察者错误: ${e.message}`);
-						}
-					}
-				}
-			};
-			
-			Services.obs.addObserver(this.windowObserver, 'domwindowopened');
-			
 			setTimeout(() => {
 				this.tryInjectIntoSyncPane();
 			}, 2000);
 			
-			Zotero.debug('Syntero.UI: 已注册偏好窗口观察者');
+			Zotero.debug('Syntero.UI: 偏好面板设置完成');
 		} catch (e) {
 			Zotero.debug(`Syntero.UI: 设置偏好面板错误: ${e.message}`);
 		}
@@ -725,6 +795,21 @@ Zotero.Syntero.UI = {
 	},
 	
 	shutdown: function() {
+		if (this.windowCheckInterval) {
+			clearInterval(this.windowCheckInterval);
+			this.windowCheckInterval = null;
+		}
+		
+		if (this.mainWindowObserver) {
+			try {
+				const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+				Services.obs.removeObserver(this.mainWindowObserver, 'domwindowopened');
+			} catch (e) {
+				// 忽略
+			}
+			this.mainWindowObserver = null;
+		}
+		
 		if (this.windowObserver) {
 			try {
 				const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");

@@ -1,7 +1,7 @@
 {
 	"manifest_version": 2,
 	"name": "Syntero - Settings Sync",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "Synchronize Zotero settings and preferences across multiple devices",
 	"author": "YU Shi Jiong",
 	"homepage_url": "https://github.com/EEExphon/Syntero-Plugin",
