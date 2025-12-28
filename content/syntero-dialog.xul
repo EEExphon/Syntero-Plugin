@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<dialog xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        id="syntero-sync-dialog"
+        title="Syntero Settings Sync"
+        buttons="accept,cancel,extra1"
+        buttonlabelaccept="上传"
+        buttonlabelcancel="Cancel"
+        buttonlabelextra1="Sync"
+        onload="initDialog();"
+        ondialogaccept="return onAccept();"
+        ondialogcancel="return onCancel();"
+        ondialogextra1="return onExtra1();"
+        width="500"
+        height="400">
+  <vbox flex="1" style="padding: 20px;">
+    <description style="font-size: 14px; margin-bottom: 15px;">
+      Syntero 设置同步
+    </description>
+    
+    <separator/>
+    
+    <description style="margin: 10px 0;">
+      • <strong>上传</strong>：将当前设置上传到云端
+    </description>
+    <description style="margin: 10px 0;">
+      • <strong>Sync</strong>：从云端下载并应用设置（覆盖当前设置）
+    </description>
+    <description style="margin: 10px 0;">
+      • <strong>Cancel</strong>：取消操作，不进行任何更改
+    </description>
+    
+    <separator style="margin: 15px 0;"/>
+    
+    <description id="syntero-dialog-status" style="color: gray; font-size: 12px;">
+      准备就绪
+    </description>
+  </vbox>
+  
+  <script type="application/javascript">
+    <![CDATA[
+      function initDialog() {
+        window.dialogResult = null;
+      }
+      
+      function onAccept() {
+        window.dialogResult = 'upload';
+        return true;
+      }
+      
+      function onExtra1() {
+        window.dialogResult = 'sync';
+        return true;
+      }
+      
+      function onCancel() {
+        window.dialogResult = 'cancel';
+        return true;
+      }
+    ]]>
+  </script>
+</dialog>
+

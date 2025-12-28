@@ -1,11 +1,4 @@
-/*
- * Syntero - Sync Management
- * Handles synchronization scheduling and coordination
- * 
- * Copyright (c) 2025 YU Shi Jiong
- * Licensed under AGPL-3.0
- */
-
+// 同步管理
 if (typeof Zotero.Syntero === 'undefined') {
 	Zotero.Syntero = {};
 }
@@ -16,9 +9,6 @@ Zotero.Syntero.Sync = {
 	isSyncing: false,
 	lastSyncTime: null,
 	
-	/**
-	 * Initialize sync scheduler
-	 */
 	init: function() {
 		if (this.initialized) {
 			return;
@@ -27,81 +17,56 @@ Zotero.Syntero.Sync = {
 		try {
 			this.setupSyncScheduler();
 			this.initialized = true;
-			Zotero.debug('Syntero.Sync: Initialized');
+			Zotero.debug('Syntero.Sync: 已初始化');
 			
-			// Initial sync check
 			setTimeout(() => {
 				this.checkForUpdates();
-			}, 5000); // Wait 5 seconds after startup
+			}, 5000);
 		} catch (e) {
-			Zotero.debug(`Syntero.Sync: Init error: ${e.message}`);
+			Zotero.debug(`Syntero.Sync: 初始化错误: ${e.message}`);
 		}
 	},
 	
-	/**
-	 * Setup sync scheduler
-	 * NOTE: Only automatic download checking is enabled, upload is always manual
-	 */
+	// 注意：自动下载已移除，所有同步都是手动的
 	setupSyncScheduler: function() {
-		const autoDownload = Zotero.Prefs.get('extensions.syntero.autoDownload', true);
-		
-		if (autoDownload) {
-			// Check for updates every 5 minutes (download only, no auto-upload)
-			this.syncInterval = setInterval(() => {
-				this.checkForUpdates();
-			}, 5 * 60 * 1000);
-			
-			Zotero.debug('Syntero.Sync: Auto-download enabled, checking every 5 minutes (upload is manual only)');
-		} else {
-			Zotero.debug('Syntero.Sync: Auto-download disabled (all sync is manual)');
-		}
-		
-		// Listen for preference changes
-		Zotero.Prefs.registerObserver('extensions.syntero.autoDownload', (prefName, newValue) => {
-			if (newValue && !this.syncInterval) {
-				this.setupSyncScheduler();
-			} else if (!newValue && this.syncInterval) {
-				clearInterval(this.syncInterval);
-				this.syncInterval = null;
-			}
-		});
+		Zotero.debug('Syntero.Sync: 所有同步都是手动的（自动下载已移除）');
 	},
 	
-	/**
-	 * Upload current settings
-	 */
 	uploadSettings: async function() {
 		if (this.isSyncing) {
-			Zotero.debug('Syntero.Sync: Already syncing, skipping upload');
+			Zotero.debug('Syntero.Sync: 正在同步，跳过上传');
 			return;
 		}
 		
 		try {
 			this.isSyncing = true;
 			const settingsJSON = Zotero.Syntero.Preferences.serialize();
+			const settings = JSON.parse(settingsJSON);
 			await Zotero.Syntero.Storage.upload(settingsJSON);
 			
 			this.lastSyncTime = new Date().toISOString();
 			Zotero.Prefs.set('extensions.syntero.lastSyncTime', this.lastSyncTime);
 			
-			Zotero.Syntero.UI.updateSyncStatus('Last synced: ' + new Date().toLocaleString());
-			Zotero.debug('Syntero.Sync: Settings uploaded successfully');
+			Zotero.Syntero.UI.updateSyncStatus('最后同步: ' + new Date().toLocaleString());
+			Zotero.debug('Syntero.Sync: 设置上传成功');
+			
+			return {
+				success: true,
+				settings: settings
+			};
 			
 		} catch (e) {
-			Zotero.debug(`Syntero.Sync: Upload error: ${e.message}`);
-			Zotero.Syntero.UI.showNotification('Sync Error', `Failed to upload settings: ${e.message}`, 'error');
+			Zotero.debug(`Syntero.Sync: 上传错误: ${e.message}`);
+			Zotero.Syntero.UI.showNotification('同步错误', `上传设置失败: ${e.message}`, 'error');
+			throw e;
 		} finally {
 			this.isSyncing = false;
 		}
 	},
 	
-	/**
-	 * Check for updates and apply them (Sync - download and apply)
-	 * @param {boolean} forceApply - Force apply settings even if from same device
-	 */
 	checkForUpdates: async function(forceApply = false) {
 		if (this.isSyncing) {
-			Zotero.debug('Syntero.Sync: Already syncing, skipping');
+			Zotero.debug('Syntero.Sync: 正在同步，跳过');
 			return;
 		}
 		
@@ -109,47 +74,41 @@ Zotero.Syntero.Sync = {
 			this.isSyncing = true;
 			const content = await Zotero.Syntero.Storage.download();
 			if (content) {
-				// Force apply when user explicitly clicks Sync button
-				const applied = Zotero.Syntero.Preferences.deserialize(content, forceApply);
-				if (applied) {
+				const result = Zotero.Syntero.Preferences.deserialize(content, forceApply);
+				if (result && result.success) {
 					this.lastSyncTime = new Date().toISOString();
 					Zotero.Prefs.set('extensions.syntero.lastSyncTime', this.lastSyncTime);
-					Zotero.Syntero.UI.updateSyncStatus('Last synced: ' + new Date().toLocaleString());
-					Zotero.debug('Syntero.Sync: Settings downloaded and applied successfully');
+					Zotero.Syntero.UI.updateSyncStatus('最后同步: ' + new Date().toLocaleString());
+					Zotero.debug('Syntero.Sync: 设置下载并应用成功');
+					return result;
 				} else {
 					if (forceApply) {
-						Zotero.debug('Syntero.Sync: Force apply requested but deserialize returned false');
-						throw new Error('Failed to apply settings');
+						Zotero.debug('Syntero.Sync: 请求强制应用但反序列化返回false');
+						throw new Error(result?.error || '应用设置失败');
 					} else {
-						Zotero.debug('Syntero.Sync: No new settings to apply');
+						Zotero.debug('Syntero.Sync: 没有新设置要应用');
+						return null;
 					}
 				}
 			} else {
-				Zotero.debug('Syntero.Sync: No settings file found in cloud');
+				Zotero.debug('Syntero.Sync: 云端未找到设置文件');
 				if (forceApply) {
-					throw new Error('No settings file found in cloud');
+					throw new Error('云端未找到设置文件');
 				}
+				return null;
 			}
 		} catch (e) {
-			Zotero.debug(`Syntero.Sync: Check for updates error: ${e.message}`);
+			Zotero.debug(`Syntero.Sync: 检查更新错误: ${e.message}`);
 			throw e;
 		} finally {
 			this.isSyncing = false;
 		}
 	},
 	
-	/**
-	 * Sync (download and apply) - replaces current settings with cloud settings
-	 * This is the "Sync" button functionality
-	 */
 	syncNow: async function() {
-		// Sync now means download and apply (same as checkForUpdates)
 		return await this.checkForUpdates();
 	},
 	
-	/**
-	 * Shutdown sync scheduler
-	 */
 	shutdown: function() {
 		if (this.syncInterval) {
 			clearInterval(this.syncInterval);
@@ -160,4 +119,3 @@ Zotero.Syntero.Sync = {
 		this.initialized = false;
 	}
 };
-

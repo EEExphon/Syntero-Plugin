@@ -1,11 +1,4 @@
-/*
- * Syntero - Preferences Management
- * Handles preference change detection and serialization
- * 
- * Copyright (c) 2025 YU Shi Jiong
- * Licensed under AGPL-3.0
- */
-
+// 偏好管理
 if (typeof Zotero.Syntero === 'undefined') {
 	Zotero.Syntero = {};
 }
@@ -15,9 +8,6 @@ Zotero.Syntero.Preferences = {
 	observerID: null,
 	syncTimeout: null,
 	
-	/**
-	 * Initialize preference listeners
-	 */
 	init: function() {
 		if (this.initialized) {
 			return;
@@ -26,71 +16,51 @@ Zotero.Syntero.Preferences = {
 		try {
 			this.setupPreferenceListeners();
 			this.initialized = true;
-			Zotero.debug('Syntero.Preferences: Initialized');
+			Zotero.debug('Syntero.Preferences: 已初始化');
 		} catch (e) {
-			Zotero.debug(`Syntero.Preferences: Init error: ${e.message}`);
+			Zotero.debug(`Syntero.Preferences: 初始化错误: ${e.message}`);
 		}
 	},
 	
-	/**
-	 * Setup preference change listeners
-	 */
 	setupPreferenceListeners: function() {
 		try {
-			// Register observer for Zotero preferences
 			if (Zotero.Prefs && Zotero.Prefs.registerObserver) {
 				this.observerID = Zotero.Prefs.registerObserver('', this.onPreferenceChange.bind(this));
 			}
 			
-			// Also monitor system preferences if available
 			if (typeof Services !== 'undefined' && Services.prefs) {
 				Services.prefs.addObserver('extensions.zotero.', this.onSystemPreferenceChange.bind(this), false);
 			}
 			
-			Zotero.debug('Syntero.Preferences: Listeners set up');
+			Zotero.debug('Syntero.Preferences: 监听器已设置');
 		} catch (e) {
-			Zotero.debug(`Syntero.Preferences: Error setting up listeners: ${e.message}`);
+			Zotero.debug(`Syntero.Preferences: 设置监听器错误: ${e.message}`);
 		}
 	},
 	
-	/**
-	 * Handle Zotero preference changes
-	 * NOTE: Auto-upload is disabled - only manual upload is allowed
-	 */
+	// 注意：自动上传已禁用，仅允许手动上传
 	onPreferenceChange: function(prefName, newValue, oldValue) {
-		// Ignore changes made during sync
 		if (Zotero.Syntero.Sync.isSyncing) {
 			return;
 		}
 		
-		// Only log the change, do NOT auto-upload
-		Zotero.debug(`Syntero.Preferences: Preference changed: ${prefName} (auto-upload disabled, use manual upload)`);
+		Zotero.debug(`Syntero.Preferences: 偏好已更改: ${prefName} (自动上传已禁用，请使用手动上传)`);
 		
-		// Clear any pending timeout (shouldn't be any, but just in case)
 		clearTimeout(this.syncTimeout);
 		this.syncTimeout = null;
 	},
 	
-	/**
-	 * Handle system preference changes
-	 * NOTE: Auto-upload is disabled - only manual upload is allowed
-	 */
 	onSystemPreferenceChange: function(subject, topic, data) {
 		if (Zotero.Syntero.Sync.isSyncing) {
 			return;
 		}
 		
-		// Only log the change, do NOT auto-upload
-		Zotero.debug(`Syntero.Preferences: System preference changed: ${data} (auto-upload disabled, use manual upload)`);
+		Zotero.debug(`Syntero.Preferences: 系统偏好已更改: ${data} (自动上传已禁用，请使用手动上传)`);
 		
-		// Clear any pending timeout
 		clearTimeout(this.syncTimeout);
 		this.syncTimeout = null;
 	},
 	
-	/**
-	 * Serialize all preferences to JSON
-	 */
 	serialize: function() {
 		const settings = {
 			version: '1.0.0',
@@ -99,12 +69,9 @@ Zotero.Syntero.Preferences = {
 			preferences: {}
 		};
 
-		// Get Zotero preferences using known keys
-		// Since Zotero.Prefs.getAll() doesn't exist, we use a list of known preferences
 		const knownPrefs = this.getKnownPreferenceKeys();
 		
 		for (const key of knownPrefs) {
-			// Skip sensitive or system preferences
 			if (this.shouldSkipPreference(key)) {
 				continue;
 			}
@@ -115,22 +82,17 @@ Zotero.Syntero.Preferences = {
 					settings.preferences[key] = prefValue;
 				}
 			} catch (e) {
-				// Preference doesn't exist or can't be read, skip it
-				Zotero.debug(`Syntero.Preferences: Skipping preference ${key}: ${e.message}`);
+				Zotero.debug(`Syntero.Preferences: 跳过偏好 ${key}: ${e.message}`);
 			}
 		}
 
 		return JSON.stringify(settings, null, 2);
 	},
 	
-	/**
-	 * Get list of known preference keys to sync
-	 */
 	getKnownPreferenceKeys: function() {
-		// List of important Zotero preferences to sync
-		// This is a curated list based on common user preferences
+		// 要同步的重要Zotero偏好列表
 		const keys = [
-			// Export settings
+			// 导出设置
 			'export.quickCopy.setting',
 			'export.quickCopy.defaultFormat',
 			'export.quickCopy.citeCommand',
@@ -140,7 +102,7 @@ Zotero.Syntero.Preferences = {
 			'export.quickCopy.citeCommandPandoc',
 			'export.quickCopy.citeCommandPandocFormat',
 			
-			// Display settings
+			// 显示设置
 			'display.dateFormat',
 			'display.dateFormat.date',
 			'display.dateFormat.time',
@@ -151,60 +113,59 @@ Zotero.Syntero.Preferences = {
 			'display.dateFormat.month',
 			'display.dateFormat.day',
 			
-			// Editor settings
+			// 编辑器设置
 			'editor.fontSize',
 			'editor.fontFamily',
 			'editor.spellcheck',
 			'editor.wordWrap',
 			
-			// General settings
+			// 常规设置
 			'general.openURL',
 			'general.openPDF',
 			'general.autoOpenNote',
 			'general.autoOpenAttachment',
 			
-			// Search settings
+			// 搜索设置
 			'search.fulltext',
 			'search.titleCreatorYear',
 			
-			// Sync settings (but not credentials)
+			// 同步设置（但不包括凭据）
 			'sync.server.username',
-			// Note: We skip sync.server.password and sync.server.passphrase for security
 			
-			// Advanced settings
+			// 高级设置
 			'advanced.export.includeAttachmentFiles',
 			'advanced.export.includeAttachmentLinks',
 			'advanced.export.includeNotes',
 			'advanced.export.includeTags',
 			'advanced.export.includeRelated',
 			
-			// Citation settings
+			// 引用设置
 			'cite.citeCommand',
 			'cite.citeCommandFormat',
 			'cite.citeCommandURL',
 			'cite.citeCommandDOI',
 			
-			// Note settings
+			// 笔记设置
 			'note.fontSize',
 			'note.fontFamily',
 			'note.spellcheck',
 			'note.wordWrap',
 			
-			// Collection settings
+			// 集合设置
 			'collections.warnOnEmptyTrash',
 			'collections.warnOnDelete',
 			
-			// Tag settings
+			// 标签设置
 			'tags.autocomplete',
 			'tags.showAutomatic',
 			
-			// Other useful settings
+			// 其他有用设置
 			'lastSelectedPrefPane',
 			'lastSelectedLibrary',
 			'lastSelectedCollection',
 		];
 		
-		// Also try to get preferences from Services.prefs for extensions.zotero.*
+		// 也尝试从Services.prefs获取extensions.zotero.*的偏好
 		try {
 			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 			const branch = Services.prefs.getBranch('extensions.zotero.');
@@ -212,80 +173,83 @@ Zotero.Syntero.Preferences = {
 			
 			for (const child of children) {
 				const fullKey = 'extensions.zotero.' + child;
-				// Only add if not already in list and not sensitive
 				if (!keys.includes(fullKey) && !this.shouldSkipPreference(fullKey)) {
 					keys.push(fullKey);
 				}
 			}
 		} catch (e) {
-			Zotero.debug(`Syntero.Preferences: Could not enumerate extensions.zotero preferences: ${e.message}`);
+			Zotero.debug(`Syntero.Preferences: 无法枚举 extensions.zotero 偏好: ${e.message}`);
 		}
 		
 		return keys;
 	},
 	
-	/**
-	 * Deserialize and apply preferences from JSON
-	 * @param {string} jsonString - JSON string containing settings
-	 * @param {boolean} forceApply - If true, apply settings even if from same device or not newer
-	 */
 	deserialize: function(jsonString, forceApply = false) {
 		try {
 			const settings = JSON.parse(jsonString);
 			
 			if (!settings.preferences || !settings.timestamp) {
-				throw new Error('Invalid settings format');
+				throw new Error('无效的设置格式');
 			}
 
-			// Check if this is from a different device (only skip if not forcing)
 			if (!forceApply && settings.deviceId === Zotero.Syntero.Storage.getDeviceId()) {
-				Zotero.debug('Syntero.Preferences: Settings from same device, skipping');
+				Zotero.debug('Syntero.Preferences: 来自同一设备的设置，跳过');
 				return false;
 			}
 
-			// Check timestamp (only skip if not forcing)
 			if (!forceApply) {
 				const lastSyncTime = Zotero.Prefs.get('extensions.syntero.lastSyncTime');
 				if (lastSyncTime && new Date(settings.timestamp) <= new Date(lastSyncTime)) {
-					Zotero.debug('Syntero.Preferences: Settings are not newer, skipping');
+					Zotero.debug('Syntero.Preferences: 设置不是更新的，跳过');
 					return false;
 				}
 			}
 
 			Zotero.Syntero.Sync.isSyncing = true;
 			
-			// Apply preferences
 			let appliedCount = 0;
+			const changes = [];
 			for (const [key, value] of Object.entries(settings.preferences)) {
 				try {
+					const oldValue = Zotero.Prefs.get(key);
 					Zotero.Prefs.set(key, value);
 					appliedCount++;
+					
+					if (oldValue !== value) {
+						changes.push({
+							key: key,
+							oldValue: oldValue,
+							newValue: value
+						});
+					}
 				} catch (e) {
-					Zotero.debug(`Syntero.Preferences: Error applying preference ${key}: ${e.message}`);
+					Zotero.debug(`Syntero.Preferences: 应用偏好 ${key} 错误: ${e.message}`);
 				}
 			}
 
 			Zotero.Prefs.set('extensions.syntero.lastSyncTime', settings.timestamp);
 			Zotero.Syntero.Sync.isSyncing = false;
 			
-			Zotero.debug(`Syntero.Preferences: Applied ${appliedCount} preferences from sync`);
+			Zotero.debug(`Syntero.Preferences: 从同步应用了 ${appliedCount} 个偏好`);
 			
-			Zotero.Syntero.UI.showNotification(
-				'Settings synchronized',
-				`Applied ${appliedCount} settings from ${new Date(settings.timestamp).toLocaleString()}`
-			);
-			
-			return true;
+			return {
+				success: true,
+				appliedCount: appliedCount,
+				changes: changes,
+				timestamp: settings.timestamp
+			};
 		} catch (e) {
-			Zotero.debug(`Syntero.Preferences: Error deserializing: ${e.message}`);
+			Zotero.debug(`Syntero.Preferences: 反序列化错误: ${e.message}`);
 			Zotero.Syntero.Sync.isSyncing = false;
-			return false;
+			return {
+				success: false,
+				error: e.message,
+				appliedCount: 0,
+				changes: []
+			};
 		}
 	},
 	
-	/**
-	 * Check if preference should be skipped
-	 */
 	shouldSkipPreference: function(key) {
 		const skipPatterns = [
 			'apiKey',
@@ -296,21 +260,18 @@ Zotero.Syntero.Preferences = {
 			'sync.password',
 			'lastSync',
 			'lastSync.time',
-			'extensions.syntero' // Skip our own preferences
+			'extensions.syntero'
 		];
 		
 		return skipPatterns.some(pattern => key.toLowerCase().includes(pattern.toLowerCase()));
 	},
 	
-	/**
-	 * Shutdown preference listeners
-	 */
 	shutdown: function() {
 		if (this.observerID !== null) {
 			try {
 				Zotero.Prefs.unregisterObserver(this.observerID);
 			} catch (e) {
-				// Ignore
+				// 忽略
 			}
 			this.observerID = null;
 		}
@@ -323,4 +284,3 @@ Zotero.Syntero.Preferences = {
 		this.initialized = false;
 	}
 };
-

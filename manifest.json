@@ -1,14 +1,20 @@
 {
 	"manifest_version": 2,
 	"name": "Syntero - Settings Sync",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "Synchronize Zotero settings and preferences across multiple devices",
-	"author": "YU Shi Jiong (22107027D)",
-	"homepage_url": "https://github.com/shijiongyu/syntero",
+	"author": "YU Shi Jiong",
+	"homepage_url": "https://github.com/EEExphon/Syntero-Plugin",
+	"icons": {
+		"16": "content/icons/syntero-icon-16.png",
+		"24": "content/icons/syntero-icon-24.png",
+		"32": "content/icons/syntero-icon-32.png",
+		"48": "content/icons/syntero-icon-48.png"
+	},
 	"applications": {
 		"zotero": {
 			"id": "syntero@zotero.org",
-			"update_url": "https://raw.githubusercontent.com/shijiongyu/syntero/master/updates.json",
+			"update_url": "https://raw.githubusercontent.com/EEExphon/Syntero-Plugin/master/updates.json",
 			"strict_min_version": "6.999",
 			"strict_max_version": "7.0.*"
 		}

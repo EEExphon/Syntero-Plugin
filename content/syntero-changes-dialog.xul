@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<dialog xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        id="syntero-changes-dialog"
+        title="Syntero - Settings Changes"
+        buttons="accept"
+        buttonlabelaccept="关闭"
+        onload="initChangesDialog();"
+        width="500px"
+        height="300px">
+  
+  <dialogheader title="同步完成"/>
+  
+  <vbox flex="1" style="padding: 10px;">
+    <description id="syntero-changes-summary" style="margin-bottom: 10px; color: green;">
+      已成功应用设置
+    </description>
+    
+    <separator/>
+    
+    <label value="更改的设置：" style="font-weight: bold; margin: 10px 0 5px 0;"/>
+    
+    <box style="border: 1px solid #ccc; padding: 5px; height: 180px; overflow-y: auto; -moz-appearance: none;">
+      <vbox id="syntero-changes-list">
+        <!-- Changes will be inserted here -->
+      </vbox>
+    </box>
+  </vbox>
+  
+  <script type="application/javascript">
+    <![CDATA[
+      var syncResult = null;
+      
+      function initChangesDialog() {
+        // Get sync result from window arguments
+        if (window.arguments && window.arguments[0]) {
+          syncResult = window.arguments[0];
+          populateChanges();
+        }
+      }
+      
+      function populateChanges() {
+        if (!syncResult) return;
+        
+        const changesList = document.getElementById('syntero-changes-list');
+        const summary = document.getElementById('syntero-changes-summary');
+        
+        if (summary) {
+          summary.textContent = '已成功应用 ' + syncResult.appliedCount + ' 个设置';
+        }
+        
+        if (changesList && syncResult.changes && syncResult.changes.length > 0) {
+          changesList.textContent = '';
+          
+          syncResult.changes.forEach(function(change, index) {
+            const changeBox = document.createElement('vbox');
+            changeBox.setAttribute('style', 'margin-bottom: 6px; padding: 6px; background-color: #f5f5f5;');
+            
+            const keyLabel = document.createElement('label');
+            keyLabel.setAttribute('value', (index + 1) + '. ' + change.key);
+            keyLabel.setAttribute('style', 'font-weight: bold; margin-bottom: 3px; font-size: 11px;');
+            changeBox.appendChild(keyLabel);
+            
+            const oldValueLabel = document.createElement('label');
+            oldValueLabel.setAttribute('value', '旧值: ' + formatValue(change.oldValue));
+            oldValueLabel.setAttribute('style', 'color: #666; font-size: 10px; margin-left: 12px;');
+            changeBox.appendChild(oldValueLabel);
+            
+            const newValueLabel = document.createElement('label');
+            newValueLabel.setAttribute('value', '新值: ' + formatValue(change.newValue));
+            newValueLabel.setAttribute('style', 'color: #0066cc; font-size: 10px; margin-left: 12px;');
+            changeBox.appendChild(newValueLabel);
+            
+            changesList.appendChild(changeBox);
+          });
+        } else if (changesList) {
+          const noChanges = document.createElement('label');
+          noChanges.setAttribute('value', '没有检测到设置更改（所有设置值相同）');
+          noChanges.setAttribute('style', 'color: #666; font-style: italic;');
+          changesList.appendChild(noChanges);
+        }
+      }
+      
+      function formatValue(value) {
+        if (value === null || value === undefined) {
+          return '(未设置)';
+        }
+        if (typeof value === 'object') {
+          return JSON.stringify(value);
+        }
+        if (typeof value === 'boolean') {
+          return value ? '是' : '否';
+        }
+        return String(value);
+      }
+    ]]>
+  </script>
+</dialog>

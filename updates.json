@@ -3,12 +3,11 @@
 		"syntero@zotero.org": {
 			"updates": [
 				{
-					"version": "1.0.0",
-					"update_link": "https://github.com/shijiongyu/syntero/releases/download/v1.0.0/syntero-1.0.0.xpi",
-					"update_info_url": "https://github.com/shijiongyu/syntero/releases/download/v1.0.0/update-info.json"
+					"version": "1.1.0",
+					"update_link": "https://github.com/EEExphon/Syntero-Plugin/releases/download/v1.1.0/syntero-1.1.0.xpi",
+					"update_info_url": "https://github.com/EEExphon/Syntero-Plugin/releases/download/v1.1.0/update-info.json"
 				}
 			]
 		}
 	}
 }
-

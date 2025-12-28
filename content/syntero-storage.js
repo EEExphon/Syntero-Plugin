@@ -1,11 +1,4 @@
-/*
- * Syntero - Storage Management
- * Handles cloud storage using Zotero Items API
- * 
- * Copyright (c) 2025 YU Shi Jiong
- * Licensed under AGPL-3.0
- */
-
+// 存储管理 - 使用Zotero Items API处理云存储
 if (typeof Zotero.Syntero === 'undefined') {
 	Zotero.Syntero = {};
 }
@@ -14,9 +7,6 @@ Zotero.Syntero.Storage = {
 	configFileName: 'syntero-config.json',
 	configItemKey: null,
 	
-	/**
-	 * Get or create device ID
-	 */
 	getDeviceId: function() {
 		let deviceId = Zotero.Prefs.get('extensions.syntero.deviceId');
 		if (!deviceId) {
@@ -26,9 +16,6 @@ Zotero.Syntero.Storage = {
 		return deviceId;
 	},
 	
-	/**
-	 * Find or create config item
-	 */
 	findConfigItem: async function() {
 		if (this.configItemKey) {
 			try {
@@ -36,10 +23,8 @@ Zotero.Syntero.Storage = {
 					Zotero.Libraries.userLibraryID,
 					this.configItemKey
 				);
-				// Check if item type is valid (must be regular item, not note)
 				if (item.itemType === 'note') {
-					Zotero.debug('Syntero.Storage: Found old note-type config item, will recreate');
-					// Delete old note item
+					Zotero.debug('Syntero.Storage: 找到旧的note类型配置项，将重新创建');
 					await item.eraseTx();
 					this.configItemKey = null;
 				} else {
@@ -50,7 +35,6 @@ Zotero.Syntero.Storage = {
 			}
 		}
 
-		// Search for existing config item by tag
 		const s = new Zotero.Search();
 		s.addCondition('tag', 'is', 'SynteroConfig');
 		s.addCondition('libraryID', 'is', Zotero.Libraries.userLibraryID);
@@ -58,10 +42,8 @@ Zotero.Syntero.Storage = {
 		
 		if (results.length > 0) {
 			const item = await Zotero.Items.getAsync(results[0]);
-			// Check if item type is valid
 			if (item.itemType === 'note') {
-				Zotero.debug('Syntero.Storage: Found old note-type config item, deleting and recreating');
-				// Delete old note item
+				Zotero.debug('Syntero.Storage: 找到旧的note类型配置项，删除并重新创建');
 				await item.eraseTx();
 				this.configItemKey = null;
 				return null;
@@ -73,10 +55,7 @@ Zotero.Syntero.Storage = {
 		return null;
 	},
 	
-	/**
-	 * Create config item
-	 * Use 'document' type instead of 'note' because attachments require a regular item as parent
-	 */
+	// 使用'document'类型而不是'note'，因为附件需要常规项作为父项
 	createConfigItem: async function() {
 		const configItem = new Zotero.Item('document');
 		configItem.setField('title', 'Syntero Settings Sync Configuration');
@@ -87,9 +66,6 @@ Zotero.Syntero.Storage = {
 		return configItem;
 	},
 	
-	/**
-	 * Find config attachment
-	 */
 	findConfigAttachment: async function(parentItem) {
 		const attachments = parentItem.getAttachments();
 		
@@ -104,9 +80,6 @@ Zotero.Syntero.Storage = {
 		return null;
 	},
 	
-	/**
-	 * Create temporary config file
-	 */
 	createTempConfigFile: async function(content) {
 		const file = Zotero.getTempDirectory();
 		file.append(this.configFileName);
@@ -114,23 +87,17 @@ Zotero.Syntero.Storage = {
 		return file;
 	},
 	
-	/**
-	 * Upload settings to cloud
-	 */
 	upload: async function(settingsJSON) {
 		try {
-			// Find or create config item
 			let configItem = await this.findConfigItem();
 			if (!configItem) {
 				configItem = await this.createConfigItem();
 			}
 
-			// Create or update attachment
 			let attachment = await this.findConfigAttachment(configItem);
 			const tempFile = await this.createTempConfigFile(settingsJSON);
 			
 			if (!attachment) {
-				// Create new attachment using Zotero.Attachments API
 				try {
 					attachment = await Zotero.Attachments.importFromFile({
 						file: tempFile,
@@ -141,13 +108,11 @@ Zotero.Syntero.Storage = {
 						await attachment.saveTx();
 					}
 				} catch (e) {
-					Zotero.debug(`Syntero.Storage: Error creating attachment: ${e.message}`);
-					throw new Error(`Failed to create attachment: ${e.message}`);
+					Zotero.debug(`Syntero.Storage: 创建附件错误: ${e.message}`);
+					throw new Error(`创建附件失败: ${e.message}`);
 				}
 			} else {
-				// Update existing attachment by replacing the file
 				try {
-					// Delete old attachment and create new one
 					await attachment.eraseTx();
 					attachment = await Zotero.Attachments.importFromFile({
 						file: tempFile,
@@ -158,12 +123,12 @@ Zotero.Syntero.Storage = {
 						await attachment.saveTx();
 					}
 				} catch (e) {
-					Zotero.debug(`Syntero.Storage: Error updating attachment: ${e.message}`);
-					throw new Error(`Failed to update attachment: ${e.message}`);
+					Zotero.debug(`Syntero.Storage: 更新附件错误: ${e.message}`);
+					throw new Error(`更新附件失败: ${e.message}`);
 				}
 			}
 
-			// Trigger sync
+			// 触发同步
 			try {
 				if (Zotero.Sync && Zotero.Sync.Runner) {
 					Zotero.Sync.Runner.sync();
@@ -171,36 +136,32 @@ Zotero.Syntero.Storage = {
 					Zotero.Sync.uploader.sync();
 				}
 			} catch (e) {
-				// Zotero will sync automatically
+				// Zotero会自动同步
 			}
 			
-			Zotero.debug('Syntero.Storage: Settings uploaded successfully');
+			Zotero.debug('Syntero.Storage: 设置上传成功');
 			return true;
 			
 		} catch (e) {
-			Zotero.debug(`Syntero.Storage: Upload error: ${e.message}`);
+			Zotero.debug(`Syntero.Storage: 上传错误: ${e.message}`);
 			throw e;
 		}
 	},
 	
-	/**
-	 * Download settings from cloud
-	 */
 	download: async function() {
 		try {
 			const configItem = await this.findConfigItem();
 			if (!configItem) {
-				Zotero.debug('Syntero.Storage: No config item found');
+				Zotero.debug('Syntero.Storage: 未找到配置项');
 				return null;
 			}
 
 			const attachment = await this.findConfigAttachment(configItem);
 			if (!attachment) {
-				Zotero.debug('Syntero.Storage: No config attachment found');
+				Zotero.debug('Syntero.Storage: 未找到配置附件');
 				return null;
 			}
 
-			// Get file path
 			let filePath;
 			try {
 				filePath = await attachment.getFilePathAsync();
@@ -209,18 +170,16 @@ Zotero.Syntero.Storage = {
 			}
 			
 			if (!filePath) {
-				Zotero.debug('Syntero.Storage: Could not get file path');
+				Zotero.debug('Syntero.Storage: 无法获取文件路径');
 				return null;
 			}
 
-			// Read file content
 			const content = await Zotero.File.getContentsAsync(filePath);
 			return content;
 			
 		} catch (e) {
-			Zotero.debug(`Syntero.Storage: Download error: ${e.message}`);
+			Zotero.debug(`Syntero.Storage: 下载错误: ${e.message}`);
 			return null;
 		}
 	}
 };
-

@@ -1,11 +1,4 @@
-/*
- * Syntero - UI Management
- * Handles user interface elements and preferences pane injection
- * 
- * Copyright (c) 2025 YU Shi Jiong
- * Licensed under AGPL-3.0
- */
-
+// UI管理
 if (typeof Zotero.Syntero === 'undefined') {
 	Zotero.Syntero = {};
 }
@@ -14,9 +7,6 @@ Zotero.Syntero.UI = {
 	initialized: false,
 	windowObserver: null,
 	
-	/**
-	 * Initialize UI components
-	 */
 	init: function() {
 		if (this.initialized) {
 			return;
@@ -27,50 +17,40 @@ Zotero.Syntero.UI = {
 			this.setupMenuItems();
 			this.setupToolbarButton();
 			this.initialized = true;
-			Zotero.debug('Syntero.UI: Initialized');
+			Zotero.debug('Syntero.UI: 已初始化');
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Init error: ${e.message}`);
-			Zotero.debug(`Syntero.UI: Stack: ${e.stack}`);
+			Zotero.debug(`Syntero.UI: 初始化错误: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 堆栈: ${e.stack}`);
 		}
 	},
 	
-	/**
-	 * Setup toolbar button in Zotero main window
-	 */
 	setupToolbarButton: function() {
 		try {
-			// Wait for Zotero to be fully loaded
 			setTimeout(() => {
 				this.addToolbarButton();
 			}, 3000);
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error setting up toolbar button: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 设置工具栏按钮错误: ${e.message}`);
 		}
 	},
 	
-	/**
-	 * Add toolbar button to main window
-	 */
 	addToolbarButton: function() {
 		try {
 			const mainWindow = Zotero.getMainWindow();
 			if (!mainWindow || !mainWindow.document) {
-				Zotero.debug('Syntero.UI: Main window not available for toolbar button');
+				Zotero.debug('Syntero.UI: 主窗口不可用');
 				return;
 			}
 			
-			// Check if button already exists
 			if (mainWindow.document.getElementById('syntero-toolbar-button')) {
 				return;
 			}
 			
-			// Find toolbar - try different possible IDs
 			let toolbar = mainWindow.document.getElementById('zotero-toolbar') ||
 			              mainWindow.document.getElementById('toolbar') ||
 			              mainWindow.document.querySelector('toolbar');
 			
 			if (!toolbar) {
-				// Try to find by class or other attributes
 				const toolbars = mainWindow.document.getElementsByTagName('toolbar');
 				if (toolbars.length > 0) {
 					toolbar = toolbars[0];
@@ -78,137 +58,203 @@ Zotero.Syntero.UI = {
 			}
 			
 			if (!toolbar) {
-				Zotero.debug('Syntero.UI: Could not find toolbar');
-				// Fallback: add to status bar or create a separate panel
+				Zotero.debug('Syntero.UI: 找不到工具栏');
 				this.addStatusBarButton(mainWindow);
 				return;
 			}
 			
-			// Create button
 			const button = mainWindow.document.createElement('toolbarbutton');
 			button.id = 'syntero-toolbar-button';
 			button.setAttribute('label', 'Syntero');
 			button.setAttribute('tooltiptext', 'Syntero Settings Sync - Click to sync settings');
-			button.setAttribute('class', 'toolbarbutton-1');
+			button.setAttribute('class', 'syntero-custom-button');
 			
-			// Add text label
+			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+			let rootURI = Zotero.Syntero.Core.rootURI;
+			let iconPath = null;
+			
+			if (rootURI) {
+				if (rootURI.startsWith('chrome://')) {
+					iconPath = rootURI + 'icons/syntero-icon-16.png';
+				} else if (rootURI.startsWith('file://')) {
+					const uri = Services.io.newURI(rootURI);
+					iconPath = 'file://' + uri.path + (uri.path.endsWith('/') ? '' : '/') + 'icons/syntero-icon-16.png';
+				} else {
+					iconPath = rootURI + (rootURI.endsWith('/') ? '' : '/') + 'icons/syntero-icon-16.png';
+				}
+				
+				try {
+					button.setAttribute('image', iconPath);
+					Zotero.debug(`Syntero.UI: 图标设置为 ${iconPath}`);
+				} catch (e) {
+					Zotero.debug(`Syntero.UI: 无法设置图标: ${e.message}`);
+				}
+			}
+			
 			button.textContent = 'Syntero';
-			button.setAttribute('style', 'padding: 2px 8px; margin: 2px; cursor: pointer;');
 			
-			// Add click event listener
+			button.style.padding = '4px 12px';
+			button.style.margin = '2px 4px';
+			button.style.cursor = 'pointer';
+			button.style.backgroundColor = '#E3F2FD';
+			button.style.border = '1px solid #90CAF9';
+			button.style.borderRadius = '4px';
+			button.style.color = '#1976D2';
+			button.style.fontWeight = '500';
+			button.style.minWidth = '60px';
+			button.style.height = '24px';
+			button.style.textAlign = 'center';
+			button.style.display = '-moz-box';
+			button.style.MozBoxAlign = 'center';
+			button.style.MozBoxPack = 'center';
+			button.style.verticalAlign = 'middle';
+			button.style.lineHeight = '24px';
+			
+			button.setAttribute('style', button.style.cssText);
+			
+			button.addEventListener('mouseenter', function() {
+				this.style.backgroundColor = '#BBDEFB';
+				this.style.borderColor = '#64B5F6';
+				this.style.color = '#1565C0';
+				this.setAttribute('style', this.style.cssText);
+			});
+			
+			button.addEventListener('mouseleave', function() {
+				this.style.backgroundColor = '#E3F2FD';
+				this.style.borderColor = '#90CAF9';
+				this.style.color = '#1976D2';
+				this.setAttribute('style', this.style.cssText);
+			});
+			
 			button.addEventListener('command', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
 				Zotero.Syntero.UI.openSynteroSettings();
 			}, false);
 			
-			// Also add onclick as fallback
 			button.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
 				Zotero.Syntero.UI.openSynteroSettings();
 			}, false);
 			
-			// Insert button into toolbar
 			toolbar.appendChild(button);
 			
-			Zotero.debug('Syntero.UI: Toolbar button added successfully');
+			Zotero.debug('Syntero.UI: 工具栏按钮添加成功');
 			
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error adding toolbar button: ${e.message}`);
-			Zotero.debug(`Syntero.UI: Stack: ${e.stack}`);
-			// Fallback to status bar
+			Zotero.debug(`Syntero.UI: 添加工具栏按钮错误: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 堆栈: ${e.stack}`);
 			try {
 				const mainWindow = Zotero.getMainWindow();
-				if (mainWindow) {
-					this.addStatusBarButton(mainWindow);
-				}
+			if (mainWindow) {
+				this.addStatusBarButton(mainWindow);
+			}
 			} catch (e2) {
-				Zotero.debug(`Syntero.UI: Error adding status bar button: ${e2.message}`);
+				Zotero.debug(`Syntero.UI: 添加状态栏按钮错误: ${e2.message}`);
 			}
 		}
 	},
 	
-	/**
-	 * Add button to status bar as fallback
-	 */
 	addStatusBarButton: function(mainWindow) {
 		try {
-			// Find status bar
 			const statusbar = mainWindow.document.getElementById('statusbar') ||
 			                  mainWindow.document.getElementById('zotero-statusbar') ||
 			                  mainWindow.document.querySelector('statusbar');
 			
 			if (!statusbar) {
-				Zotero.debug('Syntero.UI: Could not find status bar');
+				Zotero.debug('Syntero.UI: 找不到状态栏');
 				return;
 			}
 			
-			// Check if already exists
 			if (mainWindow.document.getElementById('syntero-statusbar-button')) {
 				return;
 			}
 			
-			// Create status bar panel
 			const panel = mainWindow.document.createElement('statusbarpanel');
 			panel.id = 'syntero-statusbar-button';
 			panel.setAttribute('class', 'statusbarpanel-iconic');
 			
 			const label = mainWindow.document.createElement('label');
 			label.setAttribute('value', 'Syntero');
-			label.setAttribute('style', 'cursor: pointer; padding: 2px 5px;');
+			label.setAttribute('style', 
+				'cursor: pointer; ' +
+				'padding: 4px 10px; ' +
+				'background-color: #E3F2FD; ' +
+				'border: 1px solid #90CAF9; ' +
+				'border-radius: 4px; ' +
+				'color: #1976D2; ' +
+				'font-weight: 500; ' +
+				'margin: 2px;'
+			);
 			label.addEventListener('click', () => {
 				this.openSynteroSettings();
 			}, false);
 			
+			label.addEventListener('mouseenter', function() {
+				this.setAttribute('style', 
+					'cursor: pointer; ' +
+					'padding: 4px 10px; ' +
+					'background-color: #BBDEFB; ' +
+					'border: 1px solid #64B5F6; ' +
+					'border-radius: 4px; ' +
+					'color: #1565C0; ' +
+					'font-weight: 500; ' +
+					'margin: 2px;'
+				);
+			});
+			
+			label.addEventListener('mouseleave', function() {
+				this.setAttribute('style', 
+					'cursor: pointer; ' +
+					'padding: 4px 10px; ' +
+					'background-color: #E3F2FD; ' +
+					'border: 1px solid #90CAF9; ' +
+					'border-radius: 4px; ' +
+					'color: #1976D2; ' +
+					'font-weight: 500; ' +
+					'margin: 2px;'
+				);
+			});
+			
 			panel.appendChild(label);
 			statusbar.appendChild(panel);
 			
-			Zotero.debug('Syntero.UI: Status bar button added successfully');
+			Zotero.debug('Syntero.UI: 状态栏按钮添加成功');
 			
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error adding status bar button: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 添加状态栏按钮错误: ${e.message}`);
 		}
 	},
 	
-	/**
-	 * Setup menu items as alternative access method
-	 */
 	setupMenuItems: function() {
 		try {
-			// Wait for Zotero to be fully loaded
 			setTimeout(() => {
 				this.addMenuItems();
 			}, 2000);
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error setting up menu items: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 设置菜单项错误: ${e.message}`);
 		}
 	},
 	
-	/**
-	 * Add menu items to Zotero menu
-	 */
 	addMenuItems: function() {
 		try {
 			const mainWindow = Zotero.getMainWindow();
 			if (!mainWindow || !mainWindow.document) {
-				Zotero.debug('Syntero.UI: Main window not available');
+				Zotero.debug('Syntero.UI: 主窗口不可用');
 				return;
 			}
 			
-			// Find menu bar
 			const menuBar = mainWindow.document.getElementById('main-menubar');
 			if (!menuBar) {
-				Zotero.debug('Syntero.UI: Menu bar not found');
+				Zotero.debug('Syntero.UI: 找不到菜单栏');
 				return;
 			}
 			
-			// Try to find Zotero menu (macOS) or Tools menu (Windows/Linux)
 			let menu = mainWindow.document.getElementById('zotero-menu') || 
 			           mainWindow.document.getElementById('menu_Tools');
 			
 			if (!menu) {
-				// Try to find by looking through all menus
 				const menus = menuBar.getElementsByTagName('menu');
 				for (const m of menus) {
 					const label = m.getAttribute('label') || '';
@@ -220,24 +266,20 @@ Zotero.Syntero.UI = {
 			}
 			
 			if (!menu) {
-				Zotero.debug('Syntero.UI: Could not find menu');
+				Zotero.debug('Syntero.UI: 找不到菜单');
 				return;
 			}
 			
-			// Get the menupopup
 			const menuPopup = menu.querySelector('menupopup') || menu;
 			
-			// Check if already added
 			if (mainWindow.document.getElementById('syntero-menu-settings')) {
 				return;
 			}
 			
-			// Create separator
 			const separator = mainWindow.document.createElement('menuseparator');
 			separator.id = 'syntero-menu-separator';
 			menuPopup.appendChild(separator);
 			
-			// Create "Syntero Settings" menu item
 			const menuItem = mainWindow.document.createElement('menuitem');
 			menuItem.id = 'syntero-menu-settings';
 			menuItem.setAttribute('label', 'Syntero Settings...');
@@ -246,134 +288,203 @@ Zotero.Syntero.UI = {
 			}, false);
 			menuPopup.appendChild(menuItem);
 			
-			Zotero.debug('Syntero.UI: Menu items added successfully');
+			Zotero.debug('Syntero.UI: 菜单项添加成功');
 			
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error adding menu items: ${e.message}`);
-			Zotero.debug(`Syntero.UI: Stack: ${e.stack}`);
+			Zotero.debug(`Syntero.UI: 添加菜单项错误: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 堆栈: ${e.stack}`);
 		}
 	},
 	
-	/**
-	 * Show quick sync dialog (replaces openSynteroSettings)
-	 * Only opens preferences if user performs an action, not on Cancel
-	 */
 	openSynteroSettings: function() {
-		// Just show the dialog, don't open preferences automatically
-		// Preferences will only open if user clicks Upload or Sync
 		this.showQuickSyncDialog();
 	},
 	
-	/**
-	 * Show quick sync dialog with Upload, Sync, and Cancel buttons
-	 */
 	showQuickSyncDialog: function() {
 		try {
 			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 			const promptService = Services.prompt;
 			
-			Zotero.debug('Syntero.UI: Showing sync dialog');
+			Zotero.debug('Syntero.UI: 显示同步对话框');
 			
-			// Create dialog with three buttons: Upload, Sync, and Cancel
-			// BUTTON_POS_0 = Upload, BUTTON_POS_1 = Sync, BUTTON_POS_2 = Cancel
 			const flags = promptService.BUTTON_POS_0 * promptService.BUTTON_TITLE_IS_STRING +
 			              promptService.BUTTON_POS_1 * promptService.BUTTON_TITLE_IS_STRING +
 			              promptService.BUTTON_POS_2 * promptService.BUTTON_TITLE_IS_STRING;
 			
-			const button0Title = "上传"; // Upload
-			const button1Title = "Sync"; // Sync (download and apply)
-			const button2Title = "Cancel"; // Cancel (close without action)
+			const button0Title = "Sync";
+			const button1Title = "上传";
+			const button2Title = "Cancel";
 			
 			const message = "Syntero 设置同步\n\n" +
-			                "• 上传：将当前设置上传到云端\n" +
 			                "• Sync：从云端下载并应用设置（覆盖当前设置）\n" +
-			                "• Cancel：取消操作，不进行任何更改\n\n" +
-			                "点击 Cancel 关闭窗口";
+			                "• 上传：将当前设置上传到云端\n" +
+			                "• Cancel：取消操作，关闭窗口";
 			
 			const result = promptService.confirmEx(
-				null, // parent window
+				null,
 				"Syntero Settings Sync",
 				message,
 				flags,
 				button0Title,
 				button1Title,
 				button2Title,
-				null, // checkMsg
-				{} // checkState
+				null,
+				{}
 			);
 			
-			Zotero.debug(`Syntero.UI: Dialog result: ${result}`);
+			Zotero.debug(`Syntero.UI: 对话框结果: ${result}`);
 			
 			if (result === 0) {
-				// Upload (button 0)
-				Zotero.debug('Syntero.UI: User chose Upload');
-				Zotero.Syntero.UI.updateSyncStatus('Uploading...');
-				Zotero.Syntero.Sync.uploadSettings().then(() => {
-					Zotero.Syntero.UI.updateSyncStatus('Upload Complete');
-					Zotero.Syntero.UI.showNotification('上传成功', '设置已上传到云端', 'info');
+				Zotero.debug('Syntero.UI: 用户选择 Sync');
+				this.updateSyncStatus('同步中...');
+				Zotero.Syntero.Sync.checkForUpdates(true).then((syncResult) => {
+					this.updateSyncStatus('同步完成');
+					if (syncResult && syncResult.success) {
+						this.showSyncResult(syncResult);
+					} else {
+						this.showNotification('同步成功', '已从云端下载并应用设置', 'info');
+					}
 				}).catch(e => {
-					Zotero.debug(`Syntero.UI: Upload error: ${e.message}`);
-					Zotero.Syntero.UI.updateSyncStatus('Upload Failed');
-					Zotero.Syntero.UI.showNotification('上传失败', `错误: ${e.message}`, 'error');
+					Zotero.debug(`Syntero.UI: 同步错误: ${e.message}`);
+					this.updateSyncStatus('同步失败');
+					
+					if (e.message && (e.message.includes('No settings file') || e.message.includes('not found'))) {
+						const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+						Services.prompt.alert(
+							null,
+							'Syntero - Sync',
+							'No valid configuration file found in the library.\n\nPlease upload settings first using the "Upload" button.'
+						);
+					} else {
+						this.showNotification('同步失败', `错误: ${e.message}`, 'error');
+					}
 				});
 			} else if (result === 1) {
-				// Sync (button 1) - Download and apply (force apply)
-				Zotero.debug('Syntero.UI: User chose Sync (download and apply)');
-				Zotero.Syntero.UI.updateSyncStatus('Syncing...');
-				// Force apply when user explicitly clicks Sync button
-				Zotero.Syntero.Sync.checkForUpdates(true).then(() => {
-					Zotero.Syntero.UI.updateSyncStatus('Sync Complete');
-					Zotero.Syntero.UI.showNotification('同步成功', '已从云端下载并应用设置', 'info');
+				Zotero.debug('Syntero.UI: 用户选择上传');
+				this.updateSyncStatus('上传中...');
+				Zotero.Syntero.Sync.uploadSettings().then((uploadResult) => {
+					this.updateSyncStatus('上传完成');
+					this.showUploadResult(uploadResult);
 				}).catch(e => {
-					Zotero.debug(`Syntero.UI: Sync error: ${e.message}`);
-					Zotero.Syntero.UI.updateSyncStatus('Sync Failed');
-					Zotero.Syntero.UI.showNotification('同步失败', `错误: ${e.message}`, 'error');
+					Zotero.debug(`Syntero.UI: 上传错误: ${e.message}`);
+					this.updateSyncStatus('上传失败');
+					this.showNotification('上传失败', `错误: ${e.message}`, 'error');
 				});
 			} else if (result === 2) {
-				// Cancel (button 2) - Close without action, don't open preferences
-				Zotero.debug('Syntero.UI: User chose Cancel - closing dialog without action');
-				// Do nothing, just close the dialog
-			} else {
-				// Closed via window close button or ESC key
-				Zotero.debug('Syntero.UI: User closed dialog');
+				Zotero.debug('Syntero.UI: 用户选择取消');
+				return;
 			}
 			
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error showing sync dialog: ${e.message}`);
-			Zotero.debug(`Syntero.UI: Stack: ${e.stack}`);
-			
-			// Fallback: try simpler alert
-			try {
-				const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-				Services.prompt.alert(
-					null,
-					"Syntero Settings Sync",
-					"Syntero 设置同步\n\n使用工具栏按钮或菜单访问同步功能。"
-				);
-			} catch (e2) {
-				Zotero.debug(`Syntero.UI: Error showing alert: ${e2.message}`);
-			}
+			Zotero.debug(`Syntero.UI: 显示同步对话框错误: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 堆栈: ${e.stack}`);
 		}
 	},
 	
-	/**
-	 * Setup preferences pane injection
-	 */
+	showUploadResult: function(uploadResult) {
+		try {
+			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+			const promptService = Services.prompt;
+			
+			if (!uploadResult || !uploadResult.settings) {
+				this.showNotification('上传成功', '设置已上传到云端', 'info');
+				return;
+			}
+			
+			const settings = uploadResult.settings;
+			let message = `上传成功\n\n已上传 ${Object.keys(settings.preferences || {}).length} 个设置\n\n上传的设置内容：\n\n`;
+			
+			const prefs = settings.preferences || {};
+			const prefKeys = Object.keys(prefs);
+			const keysToShow = prefKeys.slice(0, 30);
+			
+			keysToShow.forEach((key, index) => {
+				message += `${index + 1}. ${key}\n`;
+				message += `   值: ${this.formatValue(prefs[key])}\n\n`;
+			});
+			
+			if (prefKeys.length > 30) {
+				message += `... 还有 ${prefKeys.length - 30} 个设置未显示\n`;
+			}
+			
+			promptService.alert(
+				null,
+				'Syntero - 上传完成',
+				message
+			);
+			
+		} catch (e) {
+			Zotero.debug(`Syntero.UI: 显示上传结果错误: ${e.message}`);
+			this.showNotification('上传成功', '设置已上传到云端', 'info');
+		}
+	},
+	
+	showSyncResult: function(syncResult) {
+		try {
+			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+			const promptService = Services.prompt;
+			
+			if (!syncResult || !syncResult.success) {
+				this.showNotification('同步成功', '已从云端下载并应用设置', 'info');
+				return;
+			}
+			
+			let message = `同步完成\n\n已成功应用 ${syncResult.appliedCount} 个设置\n\n`;
+			
+			if (syncResult.changes && syncResult.changes.length > 0) {
+				message += `更改的设置 (${syncResult.changes.length} 项):\n\n`;
+				
+				const changesToShow = syncResult.changes.slice(0, 20);
+				changesToShow.forEach((change, index) => {
+					message += `${index + 1}. ${change.key}\n`;
+					message += `   旧值: ${this.formatValue(change.oldValue)}\n`;
+					message += `   新值: ${this.formatValue(change.newValue)}\n\n`;
+				});
+				
+				if (syncResult.changes.length > 20) {
+					message += `... 还有 ${syncResult.changes.length - 20} 个更改未显示\n`;
+				}
+			} else {
+				message += '没有检测到设置更改（所有设置值相同）\n';
+			}
+			
+			promptService.alert(
+				null,
+				'Syntero - 同步完成',
+				message
+			);
+			
+		} catch (e) {
+			Zotero.debug(`Syntero.UI: 显示同步结果错误: ${e.message}`);
+			this.showNotification('同步成功', '已从云端下载并应用设置', 'info');
+		}
+	},
+	
+	formatValue: function(value) {
+		if (value === null || value === undefined) {
+			return '(未设置)';
+		}
+		if (typeof value === 'object') {
+			return JSON.stringify(value);
+		}
+		if (typeof value === 'boolean') {
+			return value ? '是' : '否';
+		}
+		return String(value);
+	},
+	
 	setupPreferencesPane: function() {
 		try {
 			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 			
-			// Listen for window opening
 			this.windowObserver = {
 				observe: (subject, topic, data) => {
 					if (topic === 'domwindowopened') {
 						try {
-							// Try to get window from subject
 							let window = null;
 							if (subject && typeof subject.QueryInterface === 'function') {
 								window = subject.QueryInterface(Components.interfaces.nsIDOMWindow);
 							} else if (subject && subject.document) {
-								// Subject might already be a window
 								window = subject;
 							} else if (subject && subject.wrappedJSObject) {
 								window = subject.wrappedJSObject;
@@ -385,7 +496,7 @@ Zotero.Syntero.UI = {
 								}, 500);
 							}
 						} catch (e) {
-							Zotero.debug(`Syntero.UI: Error in window observer: ${e.message}`);
+							Zotero.debug(`Syntero.UI: 窗口观察者错误: ${e.message}`);
 						}
 					}
 				}
@@ -393,20 +504,16 @@ Zotero.Syntero.UI = {
 			
 			Services.obs.addObserver(this.windowObserver, 'domwindowopened');
 			
-			// Also try to inject if preferences window is already open
 			setTimeout(() => {
 				this.tryInjectIntoSyncPane();
 			}, 2000);
 			
-			Zotero.debug('Syntero.UI: Registered observer for preferences window');
+			Zotero.debug('Syntero.UI: 已注册偏好窗口观察者');
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error setting up preferences pane: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 设置偏好面板错误: ${e.message}`);
 		}
 	},
 	
-	/**
-	 * Try to inject into sync pane if window is already open
-	 */
 	tryInjectIntoSyncPane: function() {
 		try {
 			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
@@ -420,58 +527,47 @@ Zotero.Syntero.UI = {
 				}
 			}
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error trying to inject: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 尝试注入错误: ${e.message}`);
 		}
 	},
 	
-	/**
-	 * Inject Syntero UI into sync preferences pane
-	 */
 	injectIntoSyncPane: function(prefsWindow) {
 		try {
 			if (!prefsWindow || !prefsWindow.document) {
-				Zotero.debug('Syntero.UI: Invalid preferences window');
+				Zotero.debug('Syntero.UI: 无效的偏好窗口');
 				return;
 			}
 			
-			// Check if already injected
 			if (prefsWindow.document.getElementById('syntero-sync-section')) {
-				Zotero.debug('Syntero.UI: Already injected');
+				Zotero.debug('Syntero.UI: 已注入');
 				return;
 			}
 			
-			Zotero.debug('Syntero.UI: Attempting to inject into sync pane...');
+			Zotero.debug('Syntero.UI: 尝试注入到同步面板...');
 			
-			// Wait a bit for the preferences window to fully load
 			setTimeout(() => {
 				this.doInjectIntoSyncPane(prefsWindow);
 			}, 1000);
 			
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error in injectIntoSyncPane: ${e.message}`);
-			Zotero.debug(`Syntero.UI: Stack: ${e.stack}`);
+			Zotero.debug(`Syntero.UI: injectIntoSyncPane 错误: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 堆栈: ${e.stack}`);
 		}
 	},
 	
-	/**
-	 * Actually perform the injection
-	 */
 	doInjectIntoSyncPane: function(prefsWindow) {
 		try {
-			// Find sync pane - try multiple methods
 			let syncPane = null;
 			
-			// Method 1: Try common IDs
 			const possibleIDs = ['sync-prefs', 'pane-sync', 'syncPane', 'prefpane-sync'];
 			for (const id of possibleIDs) {
 				syncPane = prefsWindow.document.getElementById(id);
 				if (syncPane) {
-					Zotero.debug(`Syntero.UI: Found sync pane by ID: ${id}`);
+					Zotero.debug(`Syntero.UI: 通过ID找到同步面板: ${id}`);
 					break;
 				}
 			}
 			
-			// Method 2: Try to find by attribute
 			if (!syncPane) {
 				const allPanes = prefsWindow.document.querySelectorAll('prefpane, prefpane');
 				for (const pane of allPanes) {
@@ -484,32 +580,28 @@ Zotero.Syntero.UI = {
 					    label.includes('同步') ||
 					    text.toLowerCase().includes('sync')) {
 						syncPane = pane;
-						Zotero.debug(`Syntero.UI: Found sync pane by content: ${id || label}`);
+						Zotero.debug(`Syntero.UI: 通过内容找到同步面板: ${id || label}`);
 						break;
 					}
 				}
 			}
 			
-			// Method 3: Try to find by looking for sync-related elements
 			if (!syncPane) {
-				// Look for elements that might be in the sync pane
 				const syncElements = prefsWindow.document.querySelectorAll('[id*="sync"], [label*="sync"], [label*="同步"]');
 				if (syncElements.length > 0) {
-					// Find the parent prefpane
 					let element = syncElements[0];
 					while (element && element.tagName !== 'prefpane') {
 						element = element.parentElement;
 					}
 					if (element) {
 						syncPane = element;
-						Zotero.debug('Syntero.UI: Found sync pane by child elements');
+						Zotero.debug('Syntero.UI: 通过子元素找到同步面板');
 					}
 				}
 			}
 			
 			if (!syncPane) {
-				Zotero.debug('Syntero.UI: Could not find sync preferences pane');
-				Zotero.debug('Syntero.UI: Available panes:');
+				Zotero.debug('Syntero.UI: 找不到同步偏好面板');
 				const allPanes = prefsWindow.document.querySelectorAll('prefpane');
 				for (const pane of allPanes) {
 					Zotero.debug(`  - ID: ${pane.id}, Label: ${pane.getAttribute('label')}`);
@@ -517,21 +609,17 @@ Zotero.Syntero.UI = {
 				return;
 			}
 			
-			// Create and inject UI
 			const synteroSection = this.createSynteroSection(prefsWindow);
 			syncPane.appendChild(synteroSection);
 			
-			Zotero.debug('Syntero.UI: Successfully injected into sync preferences pane');
+			Zotero.debug('Syntero.UI: 成功注入到同步偏好面板');
 			
 		} catch (e) {
-			Zotero.debug(`Syntero.UI: Error in doInjectIntoSyncPane: ${e.message}`);
-			Zotero.debug(`Syntero.UI: Stack: ${e.stack}`);
+			Zotero.debug(`Syntero.UI: doInjectIntoSyncPane 错误: ${e.message}`);
+			Zotero.debug(`Syntero.UI: 堆栈: ${e.stack}`);
 		}
 	},
 	
-	/**
-	 * Create Syntero section UI
-	 */
 	createSynteroSection: function(prefsWindow) {
 		const doc = prefsWindow.document;
 		
@@ -539,18 +627,15 @@ Zotero.Syntero.UI = {
 		section.id = 'syntero-sync-section';
 		section.setAttribute('style', 'margin-top: 20px;');
 		
-		// Caption
 		const caption = doc.createElement('caption');
 		caption.setAttribute('label', 'Syntero - Settings Sync');
 		section.appendChild(caption);
 		
-		// Description
 		const desc = doc.createElement('description');
 		desc.textContent = 'Syntero helps you synchronize your Zotero preferences across all your devices. Upload is manual only - click "Upload Settings" to upload your current settings.';
 		desc.setAttribute('style', 'margin: 10px;');
 		section.appendChild(desc);
 		
-		// Status row
 		const statusRow = doc.createElement('hbox');
 		statusRow.setAttribute('style', 'margin: 10px;');
 		const statusLabel = doc.createElement('label');
@@ -564,7 +649,6 @@ Zotero.Syntero.UI = {
 		statusRow.appendChild(statusValue);
 		section.appendChild(statusRow);
 		
-		// Buttons
 		const buttonRow = doc.createElement('hbox');
 		buttonRow.setAttribute('style', 'margin: 10px;');
 		
@@ -585,36 +669,21 @@ Zotero.Syntero.UI = {
 		
 		section.appendChild(buttonRow);
 		
-		// Last sync
 		const lastSyncRow = doc.createElement('description');
 		lastSyncRow.setAttribute('style', 'margin: 10px;');
 		lastSyncRow.innerHTML = '<strong>Last Synced:</strong> <label id="syntero-last-sync" value="Never"/>';
 		section.appendChild(lastSyncRow);
 		
-		// Auto download checkbox (upload is always manual)
-		const autoDownloadRow = doc.createElement('checkbox');
-		autoDownloadRow.id = 'syntero-auto-download-checkbox';
-		autoDownloadRow.setAttribute('label', 'Enable automatic download (check for updates every 5 minutes)');
-		autoDownloadRow.setAttribute('checked', 'true');
-		autoDownloadRow.setAttribute('style', 'margin: 10px;');
-		autoDownloadRow.addEventListener('command', (e) => {
-			Zotero.Prefs.set('extensions.syntero.autoDownload', e.target.checked);
-		});
-		section.appendChild(autoDownloadRow);
+		const manualInfo = doc.createElement('description');
+		manualInfo.setAttribute('style', 'margin: 10px; font-size: 90%; color: gray;');
+		manualInfo.textContent = 'Note: All sync operations are manual. Click "Upload Settings" to upload, or "Sync Now" to download and apply settings.';
+		section.appendChild(manualInfo);
 		
-		// Info about manual upload
-		const manualUploadInfo = doc.createElement('description');
-		manualUploadInfo.setAttribute('style', 'margin: 10px; font-size: 90%; color: gray;');
-		manualUploadInfo.textContent = 'Note: Upload is always manual. Click "Upload Settings" or "Sync Now" to upload your settings.';
-		section.appendChild(manualUploadInfo);
-		
-		// Device ID
 		const deviceIdRow = doc.createElement('description');
 		deviceIdRow.setAttribute('style', 'margin: 10px; font-size: 90%;');
 		deviceIdRow.innerHTML = '<strong>Device ID:</strong> <label id="syntero-device-id"/>';
 		section.appendChild(deviceIdRow);
 		
-		// Update device ID
 		setTimeout(() => {
 			const deviceIdLabel = doc.getElementById('syntero-device-id');
 			if (deviceIdLabel) {
@@ -625,11 +694,8 @@ Zotero.Syntero.UI = {
 		return section;
 	},
 	
-	/**
-	 * Update sync status in UI
-	 */
 	updateSyncStatus: function(message) {
-		Zotero.debug(`Syntero Status: ${message}`);
+		Zotero.debug(`Syntero 状态: ${message}`);
 		
 		try {
 			const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
@@ -650,33 +716,25 @@ Zotero.Syntero.UI = {
 				}
 			}
 		} catch (e) {
-			// UI not available
+			// UI不可用
 		}
 	},
 	
-	/**
-	 * Show notification
-	 */
 	showNotification: function(title, message, type = 'info') {
-		Zotero.debug(`Syntero Notification [${type}]: ${title} - ${message}`);
-		// Full implementation would use Zotero's notification system
+		Zotero.debug(`Syntero 通知 [${type}]: ${title} - ${message}`);
 	},
 	
-	/**
-	 * Shutdown UI components
-	 */
 	shutdown: function() {
 		if (this.windowObserver) {
 			try {
 				const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 				Services.obs.removeObserver(this.windowObserver, 'domwindowopened');
 			} catch (e) {
-				// Ignore
+				// 忽略
 			}
 			this.windowObserver = null;
 		}
 		
-		// Remove menu items
 		try {
 			const mainWindow = Zotero.getMainWindow();
 			if (mainWindow && mainWindow.document) {
@@ -685,19 +743,16 @@ Zotero.Syntero.UI = {
 				if (menuItem) menuItem.remove();
 				if (separator) separator.remove();
 				
-				// Remove toolbar button
 				const toolbarButton = mainWindow.document.getElementById('syntero-toolbar-button');
 				if (toolbarButton) toolbarButton.remove();
 				
-				// Remove status bar button
 				const statusbarButton = mainWindow.document.getElementById('syntero-statusbar-button');
 				if (statusbarButton) statusbarButton.remove();
 			}
 		} catch (e) {
-			// Ignore
+			// 忽略
 		}
 		
 		this.initialized = false;
 	}
 };
-

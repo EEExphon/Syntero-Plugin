@@ -1,103 +1,101 @@
-/*
- * Syntero - Zotero Settings Sync Plugin
- * Bootstrap file for Zotero 7+
- * Based on Zotero sample plugin structure
- * 
- * Copyright (c) 2025 YU Shi Jiong
- * Licensed under AGPL-3.0
- */
+// Syntero插件启动文件
+// Zotero 7+ 使用
 
 const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+const { FileUtils } = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
 
-// Plugin initialization
 async function startup({ id, version, rootURI }) {
 	Services.obs.notifyObservers({wrappedJSObject: {id, version, rootURI}}, 'syntero-startup');
 	
 	try {
-		// Convert rootURI to proper file path
-		let scriptPath;
+		const { FileUtils } = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
+		const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+		
+		// 处理rootURI路径
+		let basePath;
 		if (rootURI.startsWith('chrome://')) {
-			// Chrome URI - convert to file path
 			const uri = Services.io.newURI(rootURI);
-			scriptPath = uri.path;
+			basePath = uri.path;
 		} else if (rootURI.startsWith('file://')) {
-			// File URI
 			const uri = Services.io.newURI(rootURI);
-			scriptPath = uri.path;
+			basePath = uri.path;
 		} else {
-			// Assume it's already a path
-			scriptPath = rootURI;
+			basePath = rootURI;
 		}
 		
-		// Ensure path ends with /
+		if (basePath.endsWith('/')) {
+			basePath = basePath.slice(0, -1);
+		}
+		
+		const handler = Services.io.getProtocolHandler('chrome');
+		const chromeHandler = handler.QueryInterface(Components.interfaces.nsIProtocolHandler);
+		
+		let scriptPath = basePath;
 		if (!scriptPath.endsWith('/')) {
 			scriptPath += '/';
 		}
 		
-		Services.console.logStringMessage(`Syntero: Loading scripts from ${scriptPath}`);
+		Services.console.logStringMessage(`Syntero: 从 ${scriptPath} 加载脚本`);
 		
-		// Load plugin modules in order
-		// Use try-catch for each to identify which file fails
+		// 按顺序加载模块
 		try {
 			Services.scriptloader.loadSubScript(scriptPath + 'content/include.js', {});
-			Services.console.logStringMessage('Syntero: include.js loaded');
+			Services.console.logStringMessage('Syntero: include.js 已加载');
 		} catch (e) {
-			throw new Error(`Failed to load include.js: ${e.message}`);
+			throw new Error(`加载 include.js 失败: ${e.message}`);
 		}
 		
 		try {
 			Services.scriptloader.loadSubScript(scriptPath + 'content/syntero-core.js', {});
-			Services.console.logStringMessage('Syntero: syntero-core.js loaded');
+			Services.console.logStringMessage('Syntero: syntero-core.js 已加载');
 		} catch (e) {
-			throw new Error(`Failed to load syntero-core.js: ${e.message}`);
+			throw new Error(`加载 syntero-core.js 失败: ${e.message}`);
 		}
 		
 		try {
 			Services.scriptloader.loadSubScript(scriptPath + 'content/syntero-preferences.js', {});
-			Services.console.logStringMessage('Syntero: syntero-preferences.js loaded');
+			Services.console.logStringMessage('Syntero: syntero-preferences.js 已加载');
 		} catch (e) {
-			throw new Error(`Failed to load syntero-preferences.js: ${e.message}`);
+			throw new Error(`加载 syntero-preferences.js 失败: ${e.message}`);
 		}
 		
 		try {
 			Services.scriptloader.loadSubScript(scriptPath + 'content/syntero-storage.js', {});
-			Services.console.logStringMessage('Syntero: syntero-storage.js loaded');
+			Services.console.logStringMessage('Syntero: syntero-storage.js 已加载');
 		} catch (e) {
-			throw new Error(`Failed to load syntero-storage.js: ${e.message}`);
+			throw new Error(`加载 syntero-storage.js 失败: ${e.message}`);
 		}
 		
 		try {
 			Services.scriptloader.loadSubScript(scriptPath + 'content/syntero-sync.js', {});
-			Services.console.logStringMessage('Syntero: syntero-sync.js loaded');
+			Services.console.logStringMessage('Syntero: syntero-sync.js 已加载');
 		} catch (e) {
-			throw new Error(`Failed to load syntero-sync.js: ${e.message}`);
+			throw new Error(`加载 syntero-sync.js 失败: ${e.message}`);
 		}
 		
 		try {
 			Services.scriptloader.loadSubScript(scriptPath + 'content/syntero-ui.js', {});
-			Services.console.logStringMessage('Syntero: syntero-ui.js loaded');
+			Services.console.logStringMessage('Syntero: syntero-ui.js 已加载');
 		} catch (e) {
-			throw new Error(`Failed to load syntero-ui.js: ${e.message}`);
+			throw new Error(`加载 syntero-ui.js 失败: ${e.message}`);
 		}
 		
-		// Check if namespace exists
 		if (typeof Zotero === 'undefined' || typeof Zotero.Syntero === 'undefined') {
-			throw new Error('Zotero.Syntero namespace not found after loading scripts');
+			throw new Error('Zotero.Syntero 命名空间未找到');
 		}
 		
-		// Initialize plugin
 		if (typeof Zotero.Syntero.Core === 'undefined' || typeof Zotero.Syntero.Core.init !== 'function') {
-			throw new Error('Zotero.Syntero.Core.init not found');
+			throw new Error('Zotero.Syntero.Core.init 未找到');
 		}
 		
 		Zotero.Syntero.Core.init(rootURI);
 		
-		Services.console.logStringMessage('Syntero: Plugin loaded and initialized successfully');
+		Services.console.logStringMessage('Syntero: 插件加载并初始化成功');
 	} catch (e) {
 		const errorMsg = e.message || String(e);
-		const errorStack = e.stack || 'No stack trace available';
-		Services.console.logStringMessage(`Syntero startup error: ${errorMsg}`);
-		Services.console.logStringMessage(`Syntero stack: ${errorStack}`);
+		const errorStack = e.stack || '无堆栈跟踪';
+		Services.console.logStringMessage(`Syntero 启动错误: ${errorMsg}`);
+		Services.console.logStringMessage(`Syntero 堆栈: ${errorStack}`);
 		Services.console.logStringMessage(`Syntero rootURI: ${rootURI}`);
 	}
 }
@@ -108,16 +106,15 @@ async function shutdown({ id, reason }) {
 			Zotero.Syntero.Core.shutdown();
 		}
 	} catch (e) {
-		Services.console.logStringMessage(`Syntero shutdown error: ${e.message}`);
+		Services.console.logStringMessage(`Syntero 关闭错误: ${e.message}`);
 	}
 	Services.obs.notifyObservers({wrappedJSObject: {id, reason}}, 'syntero-shutdown');
 }
 
 function install({ id, version, reason }) {
-	// Plugin installation logic
+	// 安装逻辑
 }
 
 function uninstall({ id, reason }) {
-	// Plugin uninstallation logic
+	// 卸载逻辑
 }
-

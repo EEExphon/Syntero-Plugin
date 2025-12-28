@@ -48,6 +48,8 @@ REQUIRED_FILES=(
     "content/syntero-storage.js"
     "content/syntero-sync.js"
     "content/syntero-ui.js"
+    "content/syntero-dialog.xul"
+    "content/syntero-changes-dialog.xul"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
@@ -71,9 +73,13 @@ zip -r "${XPI_NAME}" \
     content/syntero-storage.js \
     content/syntero-sync.js \
     content/syntero-ui.js \
+    content/syntero-dialog.xul \
+    content/syntero-changes-dialog.xul \
+    content/icons/*.png \
     -x "*.DS_Store" "*.git*" "*.swp" "*.swo" "*~" "*.log" "*.tmp" \
     -x "README.md" "build.sh" ".gitignore" \
-    -x "updates.json" "*.xpi" "*.zip"
+    -x "updates.json" "*.xpi" "*.zip" \
+    -x "syntero.png"
 
 if [ $? -eq 0 ]; then
     echo ""

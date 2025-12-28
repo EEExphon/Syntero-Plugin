@@ -1,12 +1,4 @@
-/*
- * Syntero - Core Plugin Logic
- * Main plugin initialization and coordination
- * 
- * Copyright (c) 2025 YU Shi Jiong
- * Licensed under AGPL-3.0
- */
-
-// Ensure namespace exists
+// 核心插件逻辑
 if (typeof Zotero.Syntero === 'undefined') {
 	Zotero.Syntero = {};
 }
@@ -15,35 +7,28 @@ Zotero.Syntero.Core = {
 	initialized: false,
 	rootURI: null,
 	
-	/**
-	 * Initialize the plugin
-	 */
 	init: function(rootURI) {
 		if (this.initialized) {
-			Zotero.debug('Syntero: Already initialized');
+			Zotero.debug('Syntero: 已初始化');
 			return;
 		}
 		
 		this.rootURI = rootURI;
 		
 		try {
-			// Initialize components in order
 			Zotero.Syntero.Preferences.init();
 			Zotero.Syntero.Sync.init();
 			Zotero.Syntero.UI.init();
 			
 			this.initialized = true;
-			Zotero.debug('Syntero: Plugin initialized successfully');
-			Zotero.debug('Syntero: Upload mode is MANUAL ONLY - settings will not auto-upload');
+			Zotero.debug('Syntero: 插件初始化成功');
+			Zotero.debug('Syntero: 上传模式为仅手动 - 设置不会自动上传');
 		} catch (e) {
-			Zotero.debug(`Syntero: Initialization error: ${e.message}`);
-			Zotero.debug(`Syntero: Stack: ${e.stack}`);
+			Zotero.debug(`Syntero: 初始化错误: ${e.message}`);
+			Zotero.debug(`Syntero: 堆栈: ${e.stack}`);
 		}
 	},
 	
-	/**
-	 * Shutdown the plugin
-	 */
 	shutdown: function() {
 		if (!this.initialized) {
 			return;
@@ -55,10 +40,9 @@ Zotero.Syntero.Core = {
 			Zotero.Syntero.Preferences.shutdown();
 			
 			this.initialized = false;
-			Zotero.debug('Syntero: Plugin shutdown complete');
+			Zotero.debug('Syntero: 插件关闭完成');
 		} catch (e) {
-			Zotero.debug(`Syntero: Shutdown error: ${e.message}`);
+			Zotero.debug(`Syntero: 关闭错误: ${e.message}`);
 		}
 	}
 };
-
